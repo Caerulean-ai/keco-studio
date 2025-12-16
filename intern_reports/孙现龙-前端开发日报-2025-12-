@@ -1,0 +1,30 @@
+# 20251216-日报
+
+Library & Resource Folder
+
+1.  Auto-Create Root "Resource Folder“
+2.  Create Library with Multiple Entry Points
+3.  Library appears as a thumbnail card
+
+
+
+Finished：
+
+1.  ✅️ Auto-Create Root "Resource Folder“
+
+    1.  需要修改表结构、迁移表数据，新增Folder模型，保持project→folder(1:N)、project→library(1:N)、project→folder→library(1:N、1:M)
+
+    2.  修改UI，未创建project之前不显示Librarys区域
+
+        问题：默认创建一个叫做Resources Folder的folder，其中为空。但现在会跟随一个Resource的library，正在排查代码......
+
+        排查时发现，无法同步supabase远程数据库（已经成功login以及link，但是pull会超时），正在解决......
+
+        
+
+2.  ❌️Create Library with Multiple Entry Points
+
+3.  ❌️Library appears as a thumbnail card
+
+
+
