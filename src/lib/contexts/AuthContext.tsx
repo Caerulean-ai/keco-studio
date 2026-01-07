@@ -68,6 +68,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsAuthenticated(false);
       setUserProfile(null);
       currentUserId.current = null;
+      
+      // Clear all caches when user signs out
+      // 1. Clear React Query cache
+      const { getGlobalQueryClient } = await import('@/lib/providers/QueryProvider');
+      const queryClient = getGlobalQueryClient();
+      if (queryClient) {
+        queryClient.clear();
+      }
+      
+      // 2. Clear global request cache (authorization, etc.)
+      const { globalRequestCache } = await import('@/lib/hooks/useRequestCache');
+      globalRequestCache.invalidate();
     } catch (e) {
       console.error('Logout failed', e);
     }
@@ -86,15 +98,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
         if (session?.user) {
+          // Check if user has changed (user switch scenario)
+          const previousUserId = currentUserId.current;
+          const newUserId = session.user.id;
+          
+          if (previousUserId && previousUserId !== newUserId) {
+            // User has switched - clear all caches
+            const { getGlobalQueryClient } = await import('@/lib/providers/QueryProvider');
+            const queryClient = getGlobalQueryClient();
+            if (queryClient) {
+              queryClient.clear();
+            }
+            
+            const { globalRequestCache } = await import('@/lib/hooks/useRequestCache');
+            globalRequestCache.invalidate();
+          }
+          
           setIsAuthenticated(true);
-          if (currentUserId.current !== session.user.id) {
+          if (currentUserId.current !== newUserId) {
             currentUserId.current = null;
           }
-          await fetchUserProfile(session.user.id);
+          await fetchUserProfile(newUserId);
         } else {
           setIsAuthenticated(false);
           setUserProfile(null);
           currentUserId.current = null;
+          
+          // Clear all caches when user signs out
+          const { getGlobalQueryClient } = await import('@/lib/providers/QueryProvider');
+          const queryClient = getGlobalQueryClient();
+          if (queryClient) {
+            queryClient.clear();
+          }
+          
+          const { globalRequestCache } = await import('@/lib/hooks/useRequestCache');
+          globalRequestCache.invalidate();
         }
       } catch (err) {
         console.error('Auth state change failed:', err);

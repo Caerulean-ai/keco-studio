@@ -24,6 +24,7 @@ import { Tree, Tooltip } from "antd";
 import { DataNode, EventDataNode } from "antd/es/tree";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSupabase } from "@/lib/SupabaseContext";
+import { useAuth } from "@/lib/contexts/AuthContext";
 import { NewProjectModal } from "@/components/projects/NewProjectModal";
 import { NewLibraryModal } from "@/components/libraries/NewLibraryModal";
 import { NewFolderModal } from "@/components/folders/NewFolderModal";
@@ -90,6 +91,7 @@ export function Sidebar({ userProfile, onAuthRequest }: SidebarProps) {
   const pathname = usePathname();
   const supabase = useSupabase();
   const queryClient = useQueryClient();
+  const { signOut } = useAuth();
   // Resolve display name: prefer username, then full_name, then email
   const displayName = userProfile?.username || userProfile?.full_name || userProfile?.email || "Guest";
   const isGuest = !userProfile;
@@ -121,7 +123,8 @@ export function Sidebar({ userProfile, onAuthRequest }: SidebarProps) {
   const handleLogout = async () => {
     setShowMenu(false);
     try {
-      await supabase.auth.signOut();
+      // Use AuthContext's signOut which will clear all caches
+      await signOut();
       // Call parent callback to keep auth state in sync
       if (onAuthRequest) {
         onAuthRequest();
@@ -142,7 +145,8 @@ export function Sidebar({ userProfile, onAuthRequest }: SidebarProps) {
       return;
     }
     // fallback: sign out and let caller react to auth state change
-    await supabase.auth.signOut();
+    // Use AuthContext's signOut which will clear all caches
+    await signOut();
   };
 
   // data state - managed by React Query, no need for manual state
@@ -260,10 +264,11 @@ export function Sidebar({ userProfile, onAuthRequest }: SidebarProps) {
   }, [projectsError]);
 
   // Listen to projectCreated event to refresh Sidebar data when project is created from other pages
-  // Use React Query's invalidateQueries to refresh cache, React Query will automatically refetch data
+  // Use React Query's refetchQueries to immediately fetch new data
   useEffect(() => {
     const handleProjectCreated = () => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      // Use refetchQueries to immediately fetch, not just invalidate
+      queryClient.refetchQueries({ queryKey: ['projects'] });
     };
 
     window.addEventListener('projectCreated' as any, handleProjectCreated as EventListener);
@@ -327,7 +332,8 @@ export function Sidebar({ userProfile, onAuthRequest }: SidebarProps) {
       
       // Delay 100ms execution to avoid triggering multiple requests when quickly switching projects
       invalidateTimeoutRef.current = setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['folders-libraries', projectId] });
+        // Use refetchQueries to immediately fetch new data
+        queryClient.refetchQueries({ queryKey: ['folders-libraries', projectId] });
       }, 100);
     };
 
@@ -495,9 +501,9 @@ export function Sidebar({ userProfile, onAuthRequest }: SidebarProps) {
       const deletedFolderId = libraryToDelete?.folder_id || null;
       
       await deleteLibrary(supabase, libraryId);
-      // Use React Query to refresh cache
+      // Use React Query to refresh cache - refetch immediately
       if (currentIds.projectId) {
-        queryClient.invalidateQueries({ queryKey: ['folders-libraries', currentIds.projectId] });
+        queryClient.refetchQueries({ queryKey: ['folders-libraries', currentIds.projectId] });
       }
       
       // Dispatch event to notify ProjectPage and FolderPage to refresh
@@ -523,9 +529,9 @@ export function Sidebar({ userProfile, onAuthRequest }: SidebarProps) {
       const isViewingLibraryInFolder = librariesInFolder.some(lib => lib.id === currentIds.libraryId);
       
       await deleteFolder(supabase, folderId);
-      // Use React Query to refresh cache
+      // Use React Query to refresh cache - refetch immediately
       if (currentIds.projectId) {
-        queryClient.invalidateQueries({ queryKey: ['folders-libraries', currentIds.projectId] });
+        queryClient.refetchQueries({ queryKey: ['folders-libraries', currentIds.projectId] });
       }
       
       // If currently viewing the folder page or a library in this folder, navigate to project page
@@ -1044,8 +1050,8 @@ export function Sidebar({ userProfile, onAuthRequest }: SidebarProps) {
       if (contextMenu.type === 'project') {
         if (window.confirm('Delete this project? All libraries under it will be removed.')) {
           deleteProject(supabase, contextMenu.id).then(() => {
-            // Use React Query to refresh cache
-            queryClient.invalidateQueries({ queryKey: ['projects'] });
+            // Use React Query to refresh cache - refetch immediately
+            queryClient.refetchQueries({ queryKey: ['projects'] });
             // If currently viewing the deleted project, navigate to home
             if (currentIds.projectId === contextMenu.id) {
               router.push('/');
@@ -1059,9 +1065,9 @@ export function Sidebar({ userProfile, onAuthRequest }: SidebarProps) {
           const libraryToDelete = libraries.find(lib => lib.id === contextMenu.id);
           const deletedFolderId = libraryToDelete?.folder_id || null;
           deleteLibrary(supabase, contextMenu.id).then(() => {
-            // Use React Query to refresh cache
+            // Use React Query to refresh cache - refetch immediately
             if (currentIds.projectId) {
-              queryClient.invalidateQueries({ queryKey: ['folders-libraries', currentIds.projectId] });
+              queryClient.refetchQueries({ queryKey: ['folders-libraries', currentIds.projectId] });
             }
             window.dispatchEvent(new CustomEvent('libraryDeleted', {
               detail: { folderId: deletedFolderId, libraryId: contextMenu.id, projectId: currentIds.projectId }
@@ -1081,9 +1087,9 @@ export function Sidebar({ userProfile, onAuthRequest }: SidebarProps) {
           const isViewingLibraryInFolder = librariesInFolder.some(lib => lib.id === currentIds.libraryId);
           
           deleteFolder(supabase, contextMenu.id).then(() => {
-            // Use React Query to refresh cache
+            // Use React Query to refresh cache - refetch immediately
             if (currentIds.projectId) {
-              queryClient.invalidateQueries({ queryKey: ['folders-libraries', currentIds.projectId] });
+              queryClient.refetchQueries({ queryKey: ['folders-libraries', currentIds.projectId] });
             }
             window.dispatchEvent(new CustomEvent('folderDeleted', {
               detail: { folderId: contextMenu.id, projectId: currentIds.projectId }
@@ -1132,8 +1138,8 @@ export function Sidebar({ userProfile, onAuthRequest }: SidebarProps) {
     if (!window.confirm('Delete this project? All libraries under it will be removed.')) return;
     try {
       await deleteProject(supabase, projectId);
-      // Use React Query to refresh cache
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      // Use React Query to refresh cache - refetch immediately
+      queryClient.refetchQueries({ queryKey: ['projects'] });
       if (currentIds.projectId === projectId) {
         router.push('/');
       }
