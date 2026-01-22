@@ -3,6 +3,8 @@
 This document describes how to locally deploy and run the `keco-studio` project on **macOS or Windows**.
 
 > **📚 Additional Documentation:**
+> - [Build Check Setup Guide](docs/BUILD_CHECK_SETUP.md) - 构建检查配置（本地 + CI，确保 Vercel 部署前构建成功）
+> - [Next.js Upgrade Guide](docs/NEXTJS_UPGRADE_GUIDE.md) - Next.js 升级指南（16.1.1 → 16.1.4）
 > - [CI/GitHub Actions Setup Guide](docs/CI_SETUP.md) - Configure automated testing
 > - [Environment Setup](docs/ENVIRONMENT_SETUP.md) - Detailed environment variable configuration
 
